@@ -11,7 +11,7 @@ class CLITest(unittest.TestCase):
     def setUp(self):
         self.keyfile = tempfile.NamedTemporaryFile(delete=False)
         self.keyfile.close()
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '1024']
+        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '2048']
         with open(os.devnull, 'w') as devnull:
             subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
 
@@ -36,7 +36,7 @@ class RegressionTest(unittest.TestCase):
 
     def test_decryption(self):
         # test that we can decrypt a file encrypted with the public key in test-data
-        key = os.path.join('test-data', 'key1024.pem')
+        key = os.path.join('test-data', 'key2048.pem')
         input_file = os.path.join('test-data', 'ciphertext.yml')
         cli_args = ['-k', key, '-i', input_file]
         ret = ppillar.main(cli_args)

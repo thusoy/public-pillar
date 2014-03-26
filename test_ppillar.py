@@ -9,7 +9,7 @@ class SecurePillarTest(unittest.TestCase):
 
     def setUp(self):
         self.keyfile = tempfile.NamedTemporaryFile(delete=False)
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '1024']
+        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '2048']
         with open(os.devnull, 'w') as devnull:
             # Shelling out to openssl because it's orders of magnitude faster
             # than Crypto.PublicKey.RSA.generate()
@@ -57,7 +57,7 @@ class ShortKeyTest(unittest.TestCase):
     def setUp(self):
         self.keyfile = tempfile.NamedTemporaryFile(delete=False)
         self.keyfile.close()
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '512']
+        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '1024']
         with open(os.devnull, 'w') as devnull:
             subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
         self.ppillar = PublicPillar(self.keyfile.name)

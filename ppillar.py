@@ -3,13 +3,14 @@
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Util import number
-from Crypto.Hash import SHA as _hash
+from Crypto.Hash import SHA512 as _hash
 from Crypto import Random
 from os import path
 import argparse
 import base64
 import sys
 import yaml
+
 
 class PublicPillar(object):
 
@@ -110,7 +111,7 @@ class PublicPillar(object):
         return d
 
 
-def cli():
+def cli(): # pragma: no cover
     """ Entry point for the CLI. """
     return main(sys.argv[1:])
 

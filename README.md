@@ -9,8 +9,8 @@ An PKI encrypted datastructure to keep secrets in the public. Primarily intended
 What does it do
 ---------------
 
-First of all, it helps you encrypt your secrets, so that they're safe from eavesdropping! Put your
-secrets in a file:
+ppillar (or public-pillar, if you prefer) helps you encrypt your secrets, so that they're safe from
+eavesdropping! Put your secrets in a file like this:
 
 ```yaml
 all:
@@ -37,7 +37,7 @@ be left entirely unprotected, if you need those to be protected you should proba
 
 Encrypt your secrets:
 
-    $ ppillar -k mykem.pub -e data-to-be-encrypted.yml
+    $ ppillar --key mykem.pub --encrypt data-to-be-encrypted.yml
 
 This will generate a file like this:
 
@@ -52,7 +52,7 @@ webserver:
 Go ahead, put it under source control or whatever you want. Then, to use the keys, typically from
 a configuration management master like the saltmaster, puppetmaster or similar:
 
-    $ ppillar -k mykem.pem -i encrypted_data.yml
+    $ ppillar --key mykem.pem --decrypt encrypted_data.yml
 
 ```yaml
 # all.sls
@@ -69,41 +69,32 @@ of the keys. They will be encrypted using your public key, and only your corresp
 key will be able to decrypt the data.
 
 
-Usage
+Installation
 -----
 
-Install it (the package is called ppillar):
+Install it with pip:
 
     $ pip install ppillar (will be on pip soon)
 
-If you already have some data encrypted in a datastructure somewhere, you can already start using
-ppillar, if not, encrypt some stuff first.
-
-    $ ppillar -k key.pub -e unencrypted_data.yml
-
-Where `key.pub` is the public key to use for encryption.
-
-To decrypt data:
-    
-    $ ppillar -k key.pem -i enc_data.yml
-
-**Note**: This doesn't work like this yet, but this is the goal. Approximately.
+Note that you need have a C compiler to compile the pycrypto package we're using. Precompiled
+binaries for Windows can be found at [Michael Foord's website, voidspace.org.uk], if you install
+pycrypto from here you don't need the compiler.
 
 
 Security
 --------
 
-We're using a hybrid encryption scheme to keep your data safe. If the keys are short enough*, they
-will be encrypted directly with the public key given, using [PKCS #1.2 OAEP] with SHA-512. If the
-values to encrypt are longer than your key permits, we'll generate a 256 bit AES key, encrypt your
-data with this key, encrypt this symmetric key with your public key, and store it next to the
-ciphertext.
+We're using a hybrid encryption scheme to keep your data safe. If the keys are short
+enough<sup>1</sup>, they will be encrypted directly with the public key given, using
+[PKCS #1.2 OAEP] with SHA-512. If the values to encrypt are longer than your key permits, we'll
+generate a 256 bit AES key, encrypt your data with this key, encrypt this symmetric key with your
+public key, and store it next to the ciphertext.
 
 You choose the strength of your RSA keys yourself, but since this is unlikely to be used in
 performance critical applications, but might frequently be attempted broken, you should probably
 use 4096 bit keys. Totally up to you though, ppillar doesn't imply any restrictions on your keys.
 
-_*_: Maximum length of data that can be encrypted with an RSA key is the size of the RSA modulus
+<sup>*</sup>: Maximum length of data that can be encrypted with an RSA key is the size of the RSA modulus
 (in bytes) minus 2, minus twice the size of the hash output (SHA512: 64 bytes). So if your key is
 2048 bits, the maximum length of data that can be encrypted before switching to the AES method
 is (2048/8 - 2 - 2*64) = 126 bytes. With a stronger 4096 bit key, this will be (4096/8 - 2 - 2*64)
@@ -127,5 +118,7 @@ Run the tests:
 
 Keep test coverage up, and have fun hacking!
 
+
 [saltstack]: http://docs.saltstack.com/en/latest/
 [pillar]: http://docs.saltstack.com/topics/tutorials/pillar.html
+[Michael Foord's website, voidspace.org.uk]: http://www.voidspace.org.uk/python/modules.shtml#pycrypto

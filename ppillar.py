@@ -47,7 +47,7 @@ class PublicPillar(object):
     def _encrypt_short_string(self, plaintext):
         """ Encrypt with a OAEP, using the key directly. """
         cipher = PKCS1_OAEP.new(self.key, hashAlgo=_hash)
-        encrypted = cipher.encrypt(plaintext)
+        encrypted = cipher.encrypt(plaintext.encode('utf-8'))
         return base64.b64encode(encrypted)
 
 
@@ -62,7 +62,7 @@ class PublicPillar(object):
                 "this long securely.")
         iv = Random.new().read(AES.block_size)
         cipher = AES.new(symmetric_key, AES.MODE_CFB, iv)
-        encrypted = iv + cipher.encrypt(plaintext)
+        encrypted = iv + cipher.encrypt(plaintext.encode('utf-8'))
         return {
             'key': self._encrypt_short_string(symmetric_key),
             'ciphertext': base64.b64encode(encrypted),

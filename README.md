@@ -3,6 +3,8 @@ public-pillar [![Build Status](https://travis-ci.org/thusoy/public-pillar.svg)](
 
 An PKI encrypted datastructure to keep secrets in the public. Primarily intended for usage with the command and control system [saltstack] and the [pillar] data structures, but should be generally usable for encrypting stuff for public storage.
 
+[Test coverage.](http://thusoy.github.io/public-pillar/)
+
 Usage
 -----
 

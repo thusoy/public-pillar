@@ -110,8 +110,12 @@ class PublicPillar(object):
         return d
 
 
-def main(cli_args):
+def cli():
     """ Entry point for the CLI. """
+    return main(sys.argv[1:])
+
+
+def main(cli_args):
     args = get_args(cli_args)
     if not args.encrypt:
         decrypt_pillar(args.key)

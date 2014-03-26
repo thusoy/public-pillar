@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- encoding: utf-8 -*-
 
 from setuptools import setup
 import sys
@@ -26,7 +27,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'ppillar = ppillar:main',
+            'ppillar = ppillar:cli',
         ]
     },
     classifiers=[

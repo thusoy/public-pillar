@@ -55,7 +55,7 @@ class RegressionTest(unittest.TestCase):
         # test that we can decrypt a file encrypted with the public key in test-data
         key = os.path.join('test-data', 'key2048.pem')
         input_file = os.path.join('test-data', 'ciphertext.yml')
-        cli_args = ['-k', key, '-i', input_file]
+        cli_args = ['-k', key, '-d', input_file]
         ret = ppillar.main(cli_args)
         self.assertEqual(ret, 0)
         with open(os.path.join('all.sls')) as fh:

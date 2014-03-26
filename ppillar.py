@@ -127,7 +127,7 @@ def main(cli_args):
 
 def decrypt_pillar(args):
     public_pillar = PublicPillar(args.key)
-    with open(args.input) as sources_fh:
+    with open(args.decrypt) as sources_fh:
         sources = yaml.load(sources_fh)
     for role, plaintext in sources.items():
         plaintexts = public_pillar.decrypt_dict(plaintext)
@@ -156,10 +156,6 @@ def encrypt_pillar(args):
 
 def get_args(cli_args):
     parser = argparse.ArgumentParser(prog='decrypt-pillar')
-    parser.add_argument('-d', '--decrypt',
-        action='store_true',
-        help='Decrypt pillar data. This is the default.',
-    )
     parser.add_argument('-e', '--encrypt',
         metavar='<string-to-encrypt>',
         help='Encrypt a new value to pillar',
@@ -168,7 +164,7 @@ def get_args(cli_args):
         metavar='<key-location>',
         help='Location of key to use for the operation.',
     )
-    parser.add_argument('-i', '--input',
+    parser.add_argument('-d', '--decrypt',
         metavar='<input-file>',
         help='File to read data to decrypt from. Default: stdin. Must be ' +
             'either JSON or YAML.'

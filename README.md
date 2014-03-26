@@ -5,10 +5,41 @@ An PKI encrypted datastructure to keep secrets in the public. Primarily intended
 
 [Test coverage.](http://thusoy.github.io/public-pillar/)
 
+
 What does it do
 ---------------
 
-It transforms a file with encrypted secrets like this:
+First of all, it helps you encrypt your secrets, so that they're safe from eavesdropping! Put your
+secrets in a file:
+
+```yaml
+all:
+    DB_PW: supersecretdbpw
+
+webserver:
+    SECRET_KEY: youcansignstuffwiththissecretkey
+```
+
+The general format is
+
+```yaml
+<server-role>:
+    <key-name>: <key>
+```
+
+Where the `role-name` determines the name of the file that will contain those keys later on. In
+your configuration management tool you can use these files to set which of your servers have access
+to which keys. If you only have one, or don't want to partition your keys any way, just put them
+all under a role named `all` or something.
+
+Note that only the secret portion of the key will be encrypted! The role names and key names will
+be left entirely unprotected, if you need those to be protected you should probably look elsewhere.
+
+Encrypt your secrets:
+
+    $ ppillar -k mykem.pub -e data-to-be-encrypted.yml
+
+This will generate a file like this:
 
 ```yaml
 all:
@@ -18,7 +49,10 @@ webserver:
   SECRET_KEY: FGFH6ZXd0SuTTsfBZfH9+S52ZXfByYDocGhlseqNl <..>
 ```
 
-And transforms it into a set of files like this:
+Go ahead, put it under source control or whatever you want. Then, to use the keys, typically from
+a configuration management master like the saltmaster, puppetmaster or similar:
+
+    $ ppillar -k mykem.pem -i encrypted_data.yml
 
 ```yaml
 # all.sls

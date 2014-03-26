@@ -1,0 +1,24 @@
+language: python
+
+python:
+  - "2.6"
+  - "2.7"
+  - "3.3"
+
+install:
+  - pip install -e .[test]
+
+script: nosetests --with-coverage --cover-html --cover-package=pwm --cover-branches
+
+after_success:
+  # Only deploy once
+  - if [[ $TRAVIS_PYTHON_VERSION == "2.7" ]]; then ./travis/deploy_coverage.sh --verbose; fi
+
+env:
+  global:
+
+    # GitHub access token that grants access to thusoys GitHub account
+    - secure: "SAPNRcEvKf8/H60VTcC5bvJmlVnzfHXPpFOu51hROgmHkWFGVrmT0hfeoo8dyAQpqTqGsBWe8C8Zok4MpoRjLi67EEQzie2MjhwyEwaMURGJaHTDv8wRwBSq+1gGI9axDldVUlKkcjNNIggWn+jllD7r4YFnsJTNY1x4dpLay+Q="
+
+notifications:
+  email: false

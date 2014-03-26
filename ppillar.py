@@ -132,7 +132,8 @@ def decrypt_pillar(args):
     for role, plaintext in sources.items():
         plaintexts = public_pillar.decrypt_dict(plaintext)
         print('Decrypting keys for %s...' % role)
-        with open(path.join(args.output_dir, '%s.sls' % role), 'w') as target_fh:
+        output_dir = args.output or '.'
+        with open(path.join(output_dir, '%s.sls' % role), 'w') as target_fh:
             yaml.safe_dump(plaintexts, target_fh, default_flow_style=False)
 
 
@@ -146,8 +147,11 @@ def encrypt_pillar(args):
     src = {
         'all': public_pillar.encrypt_dict(src_dict),
     }
-    with open('encrypted.yml', 'w') as target_fh:
-        yaml.dump(src, target_fh, default_flow_style=False)
+    if args.output:
+        with open(args.output, 'w') as out_fh:
+            yaml.dump(src, out_fh, default_flow_style=False)
+    else:
+        print(yaml.dump(src, default_flow_style=False))
 
 
 def get_args(cli_args):
@@ -169,10 +173,10 @@ def get_args(cli_args):
         help='File to read data to decrypt from. Default: stdin. Must be ' +
             'either JSON or YAML.'
     )
-    parser.add_argument('-o', '--output-dir',
-        metavar='<output-dir>',
-        default='.',
-        help='The directory to store the generated plaintexts in. Default: %(default)s',
+    parser.add_argument('-o', '--output',
+        metavar='<output>',
+        help="Where to place the generated files. If decrypting the default is the current " +
+            "directory, if encrypting the default is to print to stdout.",
     )
     args = parser.parse_args(cli_args)
     if not args.key:

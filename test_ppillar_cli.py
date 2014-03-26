@@ -1,10 +1,20 @@
 import ppillar
 
+from contextlib import contextmanager
 import os
 import subprocess
 import tempfile
 import unittest
 import yaml
+
+
+@contextmanager
+def ignored(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
 
 class CLITest(unittest.TestCase):
 
@@ -17,15 +27,17 @@ class CLITest(unittest.TestCase):
 
 
     def tearDown(self):
-        os.remove(self.keyfile.name)
+        with ignored(OSError):
+            os.remove(self.keyfile.name)
+            os.remove('test-data.yml')
 
 
     def test_json_parse(self):
         input_file = os.path.join('test-data', 'plaintext.json')
-        cli_args = ['-e', input_file, '-k', self.keyfile.name]
+        cli_args = ['-e', input_file, '-k', self.keyfile.name, '-o', 'test-data.yml']
         ret = ppillar.main(cli_args)
         self.assertEqual(ret, 0)
-        with open('encrypted.yml') as fh:
+        with open('test-data.yml') as fh:
             results = yaml.load(fh)
         self.assertEqual(len(results['all']), 2)
         self.assertTrue('DB_PW' in results['all'])
@@ -33,6 +45,11 @@ class CLITest(unittest.TestCase):
 
 
 class RegressionTest(unittest.TestCase):
+
+    def tearDown(self):
+        with ignored(OSError):
+            os.remove('all.sls')
+
 
     def test_decryption(self):
         # test that we can decrypt a file encrypted with the public key in test-data

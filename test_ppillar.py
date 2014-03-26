@@ -1,9 +1,18 @@
 from ppillar import PublicPillar
 
+from contextlib import contextmanager
 import os
 import subprocess
 import tempfile
 import unittest
+
+@contextmanager
+def ignored(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
 
 class SecurePillarTest(unittest.TestCase):
 
@@ -19,7 +28,9 @@ class SecurePillarTest(unittest.TestCase):
 
 
     def tearDown(self):
-        os.remove(self.keyfile.name)
+        with ignored(OSError):
+            os.remove(self.keyfile.name)
+            os.remove('all.sls')
 
 
     def test_encrypt(self):
@@ -64,7 +75,9 @@ class ShortKeyTest(unittest.TestCase):
 
 
     def tearDown(self):
-        os.remove(self.keyfile.name)
+        with ignored(OSError):
+            os.remove(self.keyfile.name)
+            os.remove('all.sls')
 
 
     def test_encrypt_long_string(self):

@@ -110,12 +110,14 @@ class PublicPillar(object):
         return d
 
 
-def main():
-    args = get_args()
+def main(cli_args):
+    """ Entry point for the CLI. """
+    args = get_args(cli_args)
     if not args.encrypt:
         decrypt_pillar(args.key)
     else:
-        encrypt_pillar(args.key)
+        encrypt_pillar(args)
+    return 0
 
 
 def decrypt_pillar(key):
@@ -132,19 +134,21 @@ def decrypt_pillar(key):
             yaml.dump(plaintexts, target_fh, default_flow_style=False)
 
 
-def encrypt_pillar(pub_key_location):
-    public_pillar = PublicPillar(pub_key_location)
-    with open(path.join('..', '..', 'env.yml')) as src_fh:
-        src_dict = yaml.load(src_fh)
+def encrypt_pillar(args):
+    public_pillar = PublicPillar(args.key)
+    if args.encrypt:
+        with open(args.encrypt) as src_fh:
+            src_dict = yaml.load(src_fh)
+    else:
+        src_dict = yaml.load(sys.stdin)
     src = {
         'all': public_pillar.encrypt_dict(src_dict),
     }
-    with open(path.join('..', '..', 'pillar', 'secure', 'sources.sls'), 'w') as target_fh:
-        print src['all']['SSL_KEY']
+    with open('encrypted.yml', 'w') as target_fh:
         yaml.dump(src, target_fh, default_flow_style=False)
 
 
-def get_args():
+def get_args(cli_args):
     parser = argparse.ArgumentParser(prog='decrypt-pillar')
     parser.add_argument('-d', '--decrypt',
         action='store_true',
@@ -160,14 +164,14 @@ def get_args():
     )
     parser.add_argument('-i', '--input',
         metavar='<input-file>',
-        help='File to read data to decrypt from. Default: stdin.'
+        help='File to read data to decrypt from. Default: stdin. Must be ' +
+            'either JSON or YAML.'
     )
-    parser.add_argument('-f', '--format',
-        metavar='<format>',
-        choices=('json', 'yaml'),
-        help='The format of the input file, either json or yaml for now.'
+    parser.add_argument('-o', '--output-dir',
+        metavar='<output-dir>',
+        help='The directory to store the generated plaintexts in.',
     )
-    args = parser.parse_args()
+    args = parser.parse_args(cli_args)
     if not args.key:
         print('A key is necessary to do anything! Point the --key parameter ' +
             'to a key to want to use.\n')
@@ -175,5 +179,6 @@ def get_args():
         sys.exit(1)
     return args
 
+
 if __name__ == '__main__':
-    main()
+    sys.exit(main(sys.argv[1:]))

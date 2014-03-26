@@ -80,9 +80,9 @@ class PublicPillar(object):
     def decrypt(self, b64_ciphertext):
         """ Decrypts base64-encoded data with the key. """
         if isinstance(b64_ciphertext, dict):
-            return self._decrypt_long_text(b64_ciphertext)
+            return self._decrypt_long_text(b64_ciphertext).decode('utf-8')
         else:
-            return self._decrypt_short_text(b64_ciphertext)
+            return self._decrypt_short_text(b64_ciphertext).decode('utf-8')
 
 
     def _decrypt_short_text(self, b64_ciphertext):
@@ -93,7 +93,7 @@ class PublicPillar(object):
 
     def _decrypt_long_text(self, d):
         # Message was too long for plain RSA. Use the symmetric key instead
-        symmetric_key = self.decrypt(d['key'])
+        symmetric_key = self._decrypt_short_text(d['key'])
         encrypted_data = base64.b64decode(d['ciphertext'])
         iv = encrypted_data[:16]
         ciphertext = encrypted_data[16:]

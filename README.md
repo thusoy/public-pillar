@@ -5,6 +5,36 @@ An PKI encrypted datastructure to keep secrets in the public. Primarily intended
 
 [Test coverage.](http://thusoy.github.io/public-pillar/)
 
+What does it do
+---------------
+
+It transforms a file with encrypted secrets like this:
+
+```yaml
+all:
+  DB_PW: H7gWqpRToOu74wOrRhDMXh0KQ3sbbOnhG3N2YpX <..>
+
+webserver:
+  SECRET_KEY: FGFH6ZXd0SuTTsfBZfH9+S52ZXfByYDocGhlseqNl <..>
+```
+
+And transforms it into a set of files like this:
+
+```yaml
+# all.sls
+DB_PW: supersecretdbpw
+```
+
+```yaml
+# webserver.sls
+SECRET_KEY: youcansignstuffwiththissecretkey
+```
+
+This makes it easier to keep your servers secrets in a repo, without compromising the integrity
+of the keys. They will be encrypted using your public key, and only your corresponding private
+key will be able to decrypt the data.
+
+
 Usage
 -----
 
@@ -24,6 +54,26 @@ To decrypt data:
     $ ppillar -k key.pem -i enc_data.yml
 
 **Note**: This doesn't work like this yet, but this is the goal. Approximately.
+
+
+Security
+--------
+
+We're using a hybrid encryption scheme to keep your data safe. If the keys are short enough*, they
+will be encrypted directly with the public key given, using [PKCS #1.2 OAEP] with SHA-512. If the
+values to encrypt are longer than your key permits, we'll generate a 256 bit AES key, encrypt your
+data with this key, encrypt this symmetric key with your public key, and store it next to the
+ciphertext.
+
+You choose the strength of your RSA keys yourself, but since this is unlikely to be used in
+performance critical applications, but might frequently be attempted broken, you should probably
+use 4096 bit keys. Totally up to you though, ppillar doesn't imply any restrictions on your keys.
+
+_*_: Maximum length of data that can be encrypted with an RSA key is the size of the RSA modulus
+(in bytes) minus 2, minus twice the size of the hash output (SHA512: 64 bytes). So if your key is
+2048 bits, the maximum length of data that can be encrypted before switching to the AES method
+is (2048/8 - 2 - 2*64) = 126 bytes. With a stronger 4096 bit key, this will be (4096/8 - 2 - 2*64)
+= 382 bytes.
 
 
 Development

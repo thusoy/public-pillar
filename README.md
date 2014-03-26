@@ -94,7 +94,7 @@ You choose the strength of your RSA keys yourself, but since this is unlikely to
 performance critical applications, but might frequently be attempted broken, you should probably
 use 4096 bit keys. Totally up to you though, ppillar doesn't imply any restrictions on your keys.
 
-<sup>*</sup>: Maximum length of data that can be encrypted with an RSA key is the size of the RSA modulus
+<sup>1</sup>: Maximum length of data that can be encrypted with an RSA key is the size of the RSA modulus
 (in bytes) minus 2, minus twice the size of the hash output (SHA512: 64 bytes). So if your key is
 2048 bits, the maximum length of data that can be encrypted before switching to the AES method
 is (2048/8 - 2 - 2*64) = 126 bytes. With a stronger 4096 bit key, this will be (4096/8 - 2 - 2*64)

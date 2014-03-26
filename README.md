@@ -74,7 +74,7 @@ Installation
 
 Install it with pip:
 
-    $ pip install ppillar (will be on pip soon)
+    $ pip install ppillar
 
 Note that you need have a C compiler to compile the pycrypto package we're using. Precompiled
 binaries for Windows can be found at [Michael Foord's website, voidspace.org.uk], if you install

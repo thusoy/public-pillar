@@ -43,7 +43,6 @@ class SecurePillarTest(unittest.TestCase):
         }
         self.assertTrue(self.ppillar.key.size() < len(source['test'])*8)
         encrypted = self.ppillar.encrypt_dict(source)
-        print 'Encrypted stuff: ' + str(encrypted)
         self.assertEqual(self.ppillar.decrypt_dict(encrypted), source)
 
 

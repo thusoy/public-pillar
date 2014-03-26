@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
 from setuptools import setup
+import sys
+
 
 install_requires = [
     'pycrypto',
     'pyyaml',
 ]
+
+if sys.version_info < (2, 7, 0):
+    install_requires.append('argparse')
 
 setup(
     name='ppillar',

@@ -31,3 +31,16 @@ class CLITest(unittest.TestCase):
         self.assertTrue('DB_PW' in results['all'])
         self.assertTrue('SECRET_KEY' in results['all'])
 
+
+class RegressionTest(unittest.TestCase):
+
+    def test_decryption(self):
+        # test that we can decrypt a file encrypted with the public key in test-data
+        key = os.path.join('test-data', 'key1024.pem')
+        input_file = os.path.join('test-data', 'ciphertext.yml')
+        cli_args = ['-k', key, '-i', input_file]
+        ret = ppillar.main(cli_args)
+        self.assertEqual(ret, 0)
+        with open(os.path.join('all.sls')) as fh:
+            results = yaml.load(fh)
+        self.assertEqual(len(results), 2)

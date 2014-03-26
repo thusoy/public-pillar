@@ -118,24 +118,21 @@ def cli():
 def main(cli_args):
     args = get_args(cli_args)
     if not args.encrypt:
-        decrypt_pillar(args.key)
+        decrypt_pillar(args)
     else:
         encrypt_pillar(args)
     return 0
 
 
-def decrypt_pillar(key):
-    work_dir = path.join('..', '..', 'pillar', 'secure')
-    public_pillar = PublicPillar(key)
-    enc_sources = path.join(work_dir, 'sources.sls')
-    with open(enc_sources) as sources_fh:
+def decrypt_pillar(args):
+    public_pillar = PublicPillar(args.key)
+    with open(args.input) as sources_fh:
         sources = yaml.load(sources_fh)
     for role, plaintext in sources.items():
         plaintexts = public_pillar.decrypt_dict(plaintext)
         print('Decrypting keys for %s...' % role)
-        with open(path.join(work_dir, '%s.sls' % role), 'w') as target_fh:
-            print(plaintexts['SSL_KEY'])
-            yaml.dump(plaintexts, target_fh, default_flow_style=False)
+        with open(path.join(args.output_dir, '%s.sls' % role), 'w') as target_fh:
+            yaml.safe_dump(plaintexts, target_fh, default_flow_style=False)
 
 
 def encrypt_pillar(args):
@@ -173,7 +170,8 @@ def get_args(cli_args):
     )
     parser.add_argument('-o', '--output-dir',
         metavar='<output-dir>',
-        help='The directory to store the generated plaintexts in.',
+        default='.',
+        help='The directory to store the generated plaintexts in. Default: %(default)s',
     )
     args = parser.parse_args(cli_args)
     if not args.key:
@@ -184,5 +182,5 @@ def get_args(cli_args):
     return args
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     sys.exit(main(sys.argv[1:]))

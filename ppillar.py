@@ -20,6 +20,7 @@ class PublicPillar(object):
         if not hashAlgo:
             hashAlgo = SHA512
         self.hashAlgo = hashAlgo
+        self.prng = Random.new()
 
 
     def encrypt(self, plaintext):
@@ -59,7 +60,7 @@ class PublicPillar(object):
         """ Generate random key and use that for AES. """
         # Not long enough key for message. Use symmetric encryption instead, and use RSA on
         # the symmetric key
-        symmetric_key = Random.new().read(32)
+        symmetric_key = self.prng.read(32)
         # Check if we can encrypt the symmetric key with OAEP
         if self._needs_symmetric(symmetric_key):
             raise ValueError("Key is too small to encrypt a AES256 key! Can't encrypt messages " +

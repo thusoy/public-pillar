@@ -77,7 +77,10 @@ class PublicPillar(object):
         """ Encrypt values in a dict. Return a new dict with the values encrypted. """
         enc_dict = {}
         for key, val in d.items():
-            enc_dict[key] = self.encrypt(val)
+            if isinstance(val, dict):
+                enc_dict[key] = self.encrypt_dict(val)
+            else:
+                enc_dict[key] = self.encrypt(val)
         return enc_dict
 
 
@@ -147,9 +150,7 @@ def encrypt_pillar(args):
             src_dict = yaml.load(src_fh)
     else:
         src_dict = yaml.load(sys.stdin)
-    src = {
-        'all': public_pillar.encrypt_dict(src_dict),
-    }
+    src = public_pillar.encrypt_dict(src_dict)
     if args.output:
         with open(args.output, 'w') as out_fh:
             yaml.dump(src, out_fh, default_flow_style=False)

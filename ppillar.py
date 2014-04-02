@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP, AES
-from Crypto.Util import number
-from Crypto.Hash import SHA512 as _hash
 from Crypto import Random
+from Crypto.Cipher import PKCS1_OAEP, AES
+from Crypto.Hash import SHA512
+from Crypto.PublicKey import RSA
+from Crypto.Util import number
 from os import path
 import argparse
 import base64
@@ -14,9 +14,12 @@ import yaml
 
 class PublicPillar(object):
 
-    def __init__(self, keyfile):
+    def __init__(self, keyfile, hashAlgo=None):
         with open(keyfile) as key_fh:
             self.key = RSA.importKey(key_fh.read())
+        if not hashAlgo:
+            hashAlgo = SHA512
+        self.hashAlgo = hashAlgo
 
 
     def encrypt(self, plaintext):
@@ -38,7 +41,7 @@ class PublicPillar(object):
 
         modBits = number.size(self.key.n)
         k = number.ceil_div(modBits, 8) # Convert from bits to bytes
-        hLen = _hash.digest_size
+        hLen = self.hashAlgo.digest_size
         mLen = len(plaintext)
 
         ps_len = k-mLen-2*hLen-2
@@ -47,7 +50,7 @@ class PublicPillar(object):
 
     def _encrypt_short_string(self, plaintext):
         """ Encrypt with a OAEP, using the key directly. """
-        cipher = PKCS1_OAEP.new(self.key, hashAlgo=_hash)
+        cipher = PKCS1_OAEP.new(self.key, hashAlgo=self.hashAlgo)
         encrypted = cipher.encrypt(plaintext)
         return base64.b64encode(encrypted)
 
@@ -87,7 +90,7 @@ class PublicPillar(object):
 
 
     def _decrypt_short_text(self, b64_ciphertext):
-        cipher = PKCS1_OAEP.new(self.key, hashAlgo=_hash)
+        cipher = PKCS1_OAEP.new(self.key, hashAlgo=self.hashAlgo)
         ciphertext = base64.b64decode(b64_ciphertext)
         return cipher.decrypt(ciphertext)
 

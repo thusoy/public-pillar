@@ -83,3 +83,30 @@ class ShortKeyTest(unittest.TestCase):
     def test_encrypt_long_string(self):
         data = 'secret'*100
         self.assertRaises(ValueError, self.ppillar.encrypt, data)
+
+
+class NestedDataTest(unittest.TestCase):
+
+    def setUp(self):
+        self.keyfile = tempfile.NamedTemporaryFile(delete=False)
+        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '2048']
+        with open(os.devnull, 'w') as devnull:
+            subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
+        self.keyfile.close()
+        self.ppillar = PublicPillar(self.keyfile.name)
+
+
+    def test_nested_data(self):
+        data = {
+            'servers': {
+                'apache': {
+                    'password': 'secret',
+                },
+                'nginx': {
+                    'password': 'very secret',
+                }
+            }
+        }
+        enc_dict = self.ppillar.encrypt_dict(data)
+        plaintext_data = self.ppillar.decrypt_dict(enc_dict)
+        self.assertEqual(data, plaintext_data)

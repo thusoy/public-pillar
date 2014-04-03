@@ -88,9 +88,10 @@ class PublicPillar(object):
     def decrypt(self, b64_ciphertext):
         """ Decrypts base64-encoded data with the key. """
         if isinstance(b64_ciphertext, dict):
-            return self._decrypt_long_text(b64_ciphertext).decode('utf-8')
-        else:
-            return self._decrypt_short_text(b64_ciphertext).decode('utf-8')
+            # Is it an encrypted long text or just a nested structure?
+            if'ciphertext' in b64_ciphertext and 'key' in b64_ciphertext:
+                return self._decrypt_long_text(b64_ciphertext).decode('utf-8')
+        return self._decrypt_short_text(b64_ciphertext).decode('utf-8')
 
 
     def _decrypt_short_text(self, b64_ciphertext):
@@ -114,7 +115,10 @@ class PublicPillar(object):
         """ Decrypt a dict of base64 encoded encrypted values. """
         d = {}
         for key, val in enc_dict.items():
-            d[key] = self.decrypt(val)
+            if isinstance(val, dict) and not ('ciphertext' in val and 'key' in val):
+                d[key] = self.decrypt_dict(val)
+            else:
+                d[key] = self.decrypt(val)
         return d
 
 

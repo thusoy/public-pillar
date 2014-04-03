@@ -35,6 +35,20 @@ all under a role named `all` or something.
 Note that only the secret portion of the key will be encrypted! The role names and key names will
 be left entirely unprotected, if you need those to be protected you should probably look elsewhere.
 
+ppillar supports arbitrarily nested datastructures, and will only encrypt the end value. So given
+the following structure:
+
+```yaml:
+all:
+    servers:
+        apache:
+            password: 'secret'
+        nginx:
+            password: 'hidden'
+```
+
+Only the passwords will be encrypted, all else will be stored in plaintext.
+
 Encrypt your secrets:
 
     $ ppillar --key mykem.pub --encrypt data-to-be-encrypted.yml

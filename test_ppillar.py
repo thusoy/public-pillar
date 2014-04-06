@@ -2,8 +2,6 @@ from ppillar import PublicPillar
 
 from contextlib import contextmanager
 import os
-import subprocess
-import tempfile
 import unittest
 import yaml
 
@@ -18,99 +16,64 @@ def ignored(*exceptions):
 class SecurePillarTest(unittest.TestCase):
 
     def setUp(self):
-        self.keyfile = tempfile.NamedTemporaryFile(delete=False)
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '2048']
-        with open(os.devnull, 'w') as devnull:
-            # Shelling out to openssl because it's orders of magnitude faster
-            # than Crypto.PublicKey.RSA.generate()
-            subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
-        self.keyfile.close()
-        self.ppillar = PublicPillar(self.keyfile.name)
+        self.enc_ppillar = PublicPillar(os.path.join('test-data', 'key2048.pub'))
+        self.dec_ppillar = PublicPillar(os.path.join('test-data', 'key2048.pem'))
 
 
-    def tearDown(self):
-        with ignored(OSError):
-            os.remove(self.keyfile.name)
-            os.remove('all.sls')
-
-
-    def test_encrypt(self):
-        val = 'secretstuff'
-        encrypted = self.ppillar.encrypt(val)
-        self.assertEqual(self.ppillar.decrypt(encrypted), 'secretstuff')
-
-
-    def test_short_dict_val(self):
-        source = {
-            'test': 'supersecret',
-        }
-        encrypted = self.ppillar.encrypt_dict(source)
-        self.assertEqual(self.ppillar.decrypt_dict(encrypted), source)
-
-
-    def test_long_dict_val(self):
-        source = {
-            'test': 'secret' * 100,
-            'other': 'hey, ho and a bottle of rum' * 20,
-        }
-        self.assertTrue(self.ppillar.key.size() < len(source['test'])*8)
-        encrypted = self.ppillar.encrypt_dict(source)
-        self.assertEqual(self.ppillar.decrypt_dict(encrypted), source)
-
-
-    def test_multiline(self):
-        source = 'this\nspans\nseveral\nlines'
-        encrypted = self.ppillar.encrypt(source)
-        self.assertEqual(self.ppillar.decrypt(encrypted), source)
+    def test_ppillar(self):
+        input_dicts = [
+            # Plain key-value dict
+            {
+                'db': 'secretstuff',
+            },
+            # Deeply nested dict
+            {
+                'servers': {
+                    'web': {
+                        'apache': {
+                            'debian': 'secretdebianpw',
+                            'rhel': 'secretrhelpw',
+                        }
+                    }
+                }
+            },
+            # Several values
+            {
+                'key1': 'val1',
+                'key2': 'val2',
+                'key3': 'val3',
+            },
+            # Long values over several lines
+            {
+                'long_key'*100: ('secret'*100 + '\n')*20,
+            },
+            # Random data
+            {
+                'random': str([os.urandom(10) for i in range(10)]),
+            },
+            # Almost looks like a encrypted long test
+            {
+                'ciphertext': 'not very long after all',
+            },
+            # Almost breakage again
+            {
+                'key': 'breakage'
+            }
+        ]
+        for input_dict in input_dicts:
+            encrypted = self.enc_ppillar.encrypt_dict(input_dict)
+            self.assertEqual(self.dec_ppillar.decrypt_dict(encrypted), input_dict)
 
 
 class ShortKeyTest(unittest.TestCase):
 
     def setUp(self):
-        self.keyfile = tempfile.NamedTemporaryFile(delete=False)
-        self.keyfile.close()
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '1024']
-        with open(os.devnull, 'w') as devnull:
-            subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
-        self.ppillar = PublicPillar(self.keyfile.name)
-
-
-    def tearDown(self):
-        with ignored(OSError):
-            os.remove(self.keyfile.name)
-            os.remove('all.sls')
+        self.ppillar = PublicPillar(os.path.join('test-data', 'key1024.pem'))
 
 
     def test_encrypt_long_string(self):
         data = 'secret'*100
         self.assertRaises(ValueError, self.ppillar.encrypt, data)
-
-
-class NestedDataTest(unittest.TestCase):
-
-    def setUp(self):
-        self.keyfile = tempfile.NamedTemporaryFile(delete=False)
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '2048']
-        with open(os.devnull, 'w') as devnull:
-            subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
-        self.keyfile.close()
-        self.ppillar = PublicPillar(self.keyfile.name)
-
-
-    def test_nested_data(self):
-        data = {
-            'servers': {
-                'apache': {
-                    'password': 'secret',
-                },
-                'nginx': {
-                    'password': 'very secret',
-                }
-            }
-        }
-        enc_dict = self.ppillar.encrypt_dict(data)
-        plaintext_data = self.ppillar.decrypt_dict(enc_dict)
-        self.assertEqual(data, plaintext_data)
 
 
 class EncryptedPrivateKeyTest(unittest.TestCase):

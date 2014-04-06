@@ -3,8 +3,6 @@ import ppillar
 from contextlib import contextmanager
 from mock import MagicMock, patch
 import os
-import subprocess
-import tempfile
 import unittest
 import yaml
 
@@ -19,23 +17,15 @@ def ignored(*exceptions):
 
 class CLITest(unittest.TestCase):
 
-    def setUp(self):
-        self.keyfile = tempfile.NamedTemporaryFile(delete=False)
-        self.keyfile.close()
-        genrsa_cmd = ['openssl', 'genrsa', '-out', self.keyfile.name, '2048']
-        with open(os.devnull, 'w') as devnull:
-            subprocess.check_call(genrsa_cmd, stdout=devnull, stderr=devnull)
-
-
     def tearDown(self):
         with ignored(OSError):
-            os.remove(self.keyfile.name)
             os.remove('test-data.yml')
 
 
     def test_json_parse(self):
         input_file = os.path.join('test-data', 'plaintext.json')
-        cli_args = ['-e', input_file, '-k', self.keyfile.name, '-o', 'test-data.yml']
+        key = os.path.join('test-data', 'key2048.pem')
+        cli_args = ['-e', input_file, '-k', key, '-o', 'test-data.yml']
         ret = ppillar.main(cli_args)
         self.assertEqual(ret, 0)
         with open('test-data.yml') as fh:

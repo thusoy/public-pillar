@@ -8,15 +8,16 @@ from Crypto.Util import number
 from os import path
 import argparse
 import base64
+import getpass
 import sys
 import yaml
 
 
 class PublicPillar(object):
 
-    def __init__(self, keyfile, hashAlgo=None):
+    def __init__(self, keyfile, hashAlgo=None, passphrase=None):
         with open(keyfile) as key_fh:
-            self.key = RSA.importKey(key_fh.read())
+            self.key = RSA.importKey(key_fh.read(), passphrase)
         if not hashAlgo:
             hashAlgo = SHA512
         self.hashAlgo = hashAlgo
@@ -130,14 +131,24 @@ def cli(): # pragma: no cover
 def main(cli_args):
     args = get_args(cli_args)
     if not args.encrypt:
-        decrypt_pillar(args)
+        rv = decrypt_pillar(args)
     else:
-        encrypt_pillar(args)
-    return 0
+        rv = encrypt_pillar(args)
+    return rv
 
 
 def decrypt_pillar(args):
-    public_pillar = PublicPillar(args.key)
+    try:
+        public_pillar = PublicPillar(args.key, passphrase=args.passphrase)
+    except ValueError:
+        # Maybe the key is encrypted and no passphrase was given? Prompt for one and try again
+        passphrase = getpass.getpass('Enter passphrase for private key:')
+        try:
+            public_pillar = PublicPillar(args.key, passphrase=passphrase)
+        except ValueError:
+            # Probably wrong passphrase
+            print("Couldn't load key, probably wrong passphrase.")
+            return 1
     with open(args.decrypt) as sources_fh:
         sources = yaml.load(sources_fh)
     for role, plaintext in sources.items():
@@ -146,6 +157,7 @@ def decrypt_pillar(args):
         output_dir = args.output or '.'
         with open(path.join(output_dir, '%s.sls' % role), 'w') as target_fh:
             yaml.safe_dump(plaintexts, target_fh, default_flow_style=False)
+    return 0
 
 
 def encrypt_pillar(args):
@@ -161,6 +173,7 @@ def encrypt_pillar(args):
             yaml.dump(src, out_fh, default_flow_style=False)
     else:
         print(yaml.dump(src, default_flow_style=False))
+    return 0
 
 
 def get_args(cli_args):
@@ -182,6 +195,10 @@ def get_args(cli_args):
         metavar='<output>',
         help="Where to place the generated files. If decrypting the default is the current " +
             "directory, if encrypting the default is to print to stdout.",
+    )
+    parser.add_argument('-p', '--passphrase',
+        metavar='<passphrase>',
+        help='The passphrase to use for decrypting an encrypted private key',
     )
     args = parser.parse_args(cli_args)
     if not args.key:

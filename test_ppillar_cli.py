@@ -1,6 +1,7 @@
 import ppillar
 
 from contextlib import contextmanager
+from mock import MagicMock, patch
 import os
 import subprocess
 import tempfile
@@ -61,3 +62,30 @@ class RegressionTest(unittest.TestCase):
         with open(os.path.join('all.sls')) as fh:
             results = yaml.load(fh)
         self.assertEqual(len(results), 2)
+
+
+class EncryptedKeyTest(unittest.TestCase):
+
+    def tearDown(self):
+        with ignored(OSError):
+            os.remove('all.sls')
+
+
+    def test_encrypted_key_cli(self):
+        key = os.path.join('test-data', 'key2048enc.pem')
+        ciphertext = os.path.join('test-data', 'ciphertext.yml')
+        getpass_mock = MagicMock(**{'getpass.return_value': 'test'})
+        with patch('ppillar.getpass', getpass_mock):
+            ret = ppillar.main(['-k', key, '-d', ciphertext])
+        self.assertEqual(ret, 0)
+
+
+class WrongPassEncryptedKeyTest(unittest.TestCase):
+
+    def test_encrypted_key_cli(self):
+        key = os.path.join('test-data', 'key2048enc.pem')
+        ciphertext = os.path.join('test-data', 'ciphertext.yml')
+        getpass_mock = MagicMock(**{'getpass.return_value': 'foo'})
+        with patch('ppillar.getpass', getpass_mock):
+            ret = ppillar.main(['-k', key, '-d', ciphertext])
+        self.assertEqual(ret, 1)

@@ -23,7 +23,7 @@ setup(
     py_modules=['ppillar'],
     install_requires=install_requires,
     extras_require={
-        'test': ['nose', 'coverage'],
+        'test': ['coverage', 'mock', 'nose'],
     },
     entry_points={
         'console_scripts': [

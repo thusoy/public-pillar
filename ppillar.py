@@ -152,8 +152,8 @@ def decrypt_pillar(args):
     with open(args.decrypt) as sources_fh:
         sources = yaml.load(sources_fh)
     for role, plaintext in sources.items():
-        plaintexts = public_pillar.decrypt_dict(plaintext)
         print('Decrypting keys for %s...' % role)
+        plaintexts = public_pillar.decrypt_dict(plaintext)
         output_dir = args.output or '.'
         with open(path.join(output_dir, '%s.sls' % role), 'w') as target_fh:
             yaml.safe_dump(plaintexts, target_fh, default_flow_style=False)

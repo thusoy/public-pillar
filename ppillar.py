@@ -9,6 +9,7 @@ from os import path
 import argparse
 import base64
 import getpass
+import os
 import sys
 import yaml
 
@@ -153,6 +154,8 @@ def decrypt_pillar(args):
         print('Decrypting keys for %s...' % role)
         plaintexts = public_pillar.decrypt_dict(plaintext)
         output_dir = args.output or '.'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         with open(path.join(output_dir, '%s.sls' % role), 'w') as target_fh:
             yaml.safe_dump(plaintexts, target_fh, default_flow_style=False)
     return 0

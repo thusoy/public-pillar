@@ -3,6 +3,10 @@ import ppillar
 from contextlib import contextmanager
 from mock import MagicMock, patch
 import os
+import random
+import shutil
+import string
+import tempfile
 import unittest
 import yaml
 
@@ -79,3 +83,21 @@ class WrongPassEncryptedKeyTest(unittest.TestCase):
         with patch('ppillar.getpass', getpass_mock):
             ret = ppillar.main(['-k', key, '-d', ciphertext])
         self.assertEqual(ret, 1)
+
+
+class NonexistentOutputDirectoryTest(unittest.TestCase):
+
+    def setUp(self):
+        tempdir = tempfile.gettempdir()
+        self.target_dir = os.path.join(tempdir, str([random.choice(string.ascii_letters) for i in range(10)]))
+
+
+    def tearDown(self):
+        shutil.rmtree(self.target_dir, ignore_errors=True)
+
+
+    def test_nonexisting_target_dir(self):
+        source_data = os.path.join('test-data', 'ciphertext.yml')
+        ppillar.main(['-k', os.path.join('test-data', 'key2048.pem'), '-d', source_data, '-o',
+            self.target_dir])
+        self.assertTrue('all.sls' in os.listdir(self.target_dir))

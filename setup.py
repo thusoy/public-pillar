@@ -17,7 +17,7 @@ if sys.version_info < (2, 7, 0):
 
 setup(
     name='ppillar',
-    version='0.2.0',
+    version='0.2.1',
     author='Tarjei Husøy',
     author_email='tarjei@roms.no',
     url='https://github.com/thusoy/public-pillar',

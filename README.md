@@ -1,86 +1,63 @@
 public-pillar [![Build Status](https://travis-ci.org/thusoy/public-pillar.svg)](https://travis-ci.org/thusoy/public-pillar)
 =============
 
-An PKI encrypted datastructure to keep secrets in the public. Primarily intended for usage with the command and control system [saltstack] and the [pillar] data structures, but should be generally usable for encrypting stuff for public storage.
+An encrypted datastructure to store secrets publicly. Primarily intended for usage with the command and control system [saltstack] and the [pillar] data structures, but should be generally usable for encrypting stuff for storing in public.
 
 [Test coverage.](http://thusoy.github.io/public-pillar/)
+
+Goals
+-----
+
+* It should enable easy and secure handling of secret values in public repositories
+* Users should be able to add new secrets without needing the private key of the server deploying the keys
+* It should be easy to encrypt both single values and larger files
+* It should be easy to integrate with a SaltStack setup with a saltmaster
 
 
 What does it do
 ---------------
 
-ppillar (or public-pillar, if you prefer) helps you encrypt your secrets, so that they're safe from
-eavesdropping! Put your secrets in a file like this:
+ppillar (or public-pillar, if you prefer) helps you encrypt secret values you need to distribute to your servers,
+enabling you to keep them in public version control systems.
+
+    $ ppillar -k mykey.pub encrypt "supersecretdbpw"
+    5bBspX19aI62mGNIjZgO2DOGu9k0Yzk6plxeSIr5KTX4/BzvsW026wL7K+QcAEZITwXVmxOSLgDkw4H+z2tY6RZdeGZOripOlMaEtNSYoAwnxCNErLaWIpTxq/8EwcSeRhymu/6lrqqyYOYXC36S3hHeGUzq60mefT3/z5GlVP6F2P/hJADF4ywleav+KTkfDQAPjNGHJ5X3wtHPQqpfr8SySs5Rwy2WtC53eY7fov+74I1VjNbEQ+YcjfKI9m33nypFLvlYCcmXhvmxm0jyashISRChLGJBuASgEqhsnnQ6hdtwC56VFp6GkQxv7+jRjbBQzOxT8GtCTID3U40+iA==
+
+Store this value in a YAML/JSON file in your repository, like so:
 
 ```yaml
-all:
-    DB_PW: supersecretdbpw
-
-webserver:
-    SECRET_KEY: youcansignstuffwiththissecretkey
+# secrets.yml
+database:
+    password: 5bBspX19aI62mGNIjZgO2DOGu9k0Yzk6plxeSIr5KTX4/BzvsW026w <..>
 ```
 
-The general format is
+Commit it. On the server where you're deploying from, decrypt the values:
 
-```yaml
-<server-role>:
-    <key-name>: <key>
+    $ ppillar --key myprivatekey.pem decrypt secrets.yml
+    database:
+        password: supersecretdbpw
+
+You can redirect this output to wherever you need the files, like in a pillar state or similar.
+
+ppillar can also work on directories, if you have a lot of secrets, or partition them into files
+based on who should have access to what (good!), like a hierarchy like this:
+
+```
+secrets/
+secrets/webserver.yml
+secrets/database.yml
 ```
 
-Where the `role-name` determines the name of the file that will contain those keys later on. In
-your configuration management tool you can use these files to set which of your servers have access
-to which keys. If you only have one, or don't want to partition your keys any way, just put them
-all under a role named `all` or something.
+You can decrypt all of them and output them into a new directory like this:
 
-Note that only the secret portion of the key will be encrypted! The role names and key names will
-be left entirely unprotected, if you need those to be protected you should probably look elsewhere.
+    $ ppillar -k myprivatekey.pem decrypt secrets -o pillar/secrets
 
-ppillar supports arbitrarily nested datastructures, and will only encrypt the end value. So given
-the following structure:
+This will generate a pillar/secrets directory like this:
 
-```yaml:
-all:
-    servers:
-        apache:
-            password: 'secret'
-        nginx:
-            password: 'hidden'
 ```
-
-Only the passwords will be encrypted, all else will be stored in plaintext.
-
-Encrypt your secrets:
-
-    $ ppillar --key mykem.pub --encrypt data-to-be-encrypted.yml
-
-This will generate a file like this:
-
-```yaml
-all:
-  DB_PW: H7gWqpRToOu74wOrRhDMXh0KQ3sbbOnhG3N2YpX <..>
-
-webserver:
-  SECRET_KEY: FGFH6ZXd0SuTTsfBZfH9+S52ZXfByYDocGhlseqNl <..>
+pillar/secrets/webserver.yml
+pillar/secrets/database.yml
 ```
-
-Go ahead, put it under source control or whatever you want. Then, to use the keys, typically from
-a configuration management master like the saltmaster, puppetmaster or similar:
-
-    $ ppillar --key mykem.pem --decrypt encrypted_data.yml
-
-```yaml
-# all.sls
-DB_PW: supersecretdbpw
-```
-
-```yaml
-# webserver.sls
-SECRET_KEY: youcansignstuffwiththissecretkey
-```
-
-This makes it easier to keep your servers secrets in a repo, without compromising the integrity
-of the keys. They will be encrypted using your public key, and only your corresponding private
-key will be able to decrypt the data.
 
 
 Installation
@@ -98,7 +75,7 @@ pycrypto from here you don't need the compiler.
 Security
 --------
 
-We're using a hybrid encryption scheme to keep your data safe. If the keys are short
+ppillar uses a hybrid encryption scheme to keep your data safe. If the keys are short
 enough<sup>1</sup>, they will be encrypted directly with the public key given, using
 [PKCS #1.2 OAEP] with SHA-512. If the values to encrypt are longer than your key permits, we'll
 generate a 256 bit AES key, encrypt your data with this key, encrypt this symmetric key with your
@@ -113,6 +90,8 @@ use 4096 bit keys. Totally up to you though, ppillar doesn't imply any restricti
 2048 bits, the maximum length of data that can be encrypted before switching to the AES method
 is (2048/8 - 2 - 2*64) = 126 bytes. With a stronger 4096 bit key, this will be (4096/8 - 2 - 2*64)
 = 382 bytes.
+
+**Note:** Decrypting encrypted private keys can only be done with pycrypto>=2.6.1.
 
 
 Development

@@ -14,6 +14,14 @@ import sys
 import yaml
 
 
+def strtype(data):
+    """ Enforce a str type that will be printed without b/u prefixes on both py2 and py3. """
+    PY3 = sys.version_info[0] == 3
+    if PY3:
+        return data.decode('utf-8')
+    return data
+
+
 class PublicPillar(object):
 
     def __init__(self, keyfile, hashAlgo=None, passphrase=None):
@@ -71,8 +79,8 @@ class PublicPillar(object):
         cipher = AES.new(symmetric_key, AES.MODE_CFB, iv)
         encrypted = iv + cipher.encrypt(plaintext)
         return {
-            'key': self._encrypt_short_string(symmetric_key),
-            'ciphertext': base64.b64encode(encrypted),
+            'key': strtype(self._encrypt_short_string(symmetric_key)),
+            'ciphertext': strtype(base64.b64encode(encrypted)),
         }
 
 
@@ -181,7 +189,8 @@ def encrypt(args):
     else:
         value = sys.stdin.read()
     ciphertext = public_pillar.encrypt(value)
-    print(ciphertext)
+    output = ciphertext.decode('ascii') if hasattr(ciphertext, 'decode') else ciphertext
+    print(output)
     return 0
 
 

@@ -7,10 +7,15 @@ import sys
 import random
 import shutil
 import string
-import StringIO
 import tempfile
 import unittest
 import yaml
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    # python 3
+    from io import StringIO
 
 
 @contextmanager
@@ -124,7 +129,7 @@ class EncryptionTest(unittest.TestCase):
 
     def test_encrypt_stdin(self):
         secret = 'supersecret'
-        with patch('ppillar.sys.stdin', StringIO.StringIO(secret)):
+        with patch('ppillar.sys.stdin', StringIO(secret)):
             ret = ppillar.main(['-k', self.key, 'encrypt'])
         self.assertEqual(ret, 0)
         output = sys.stdout.getvalue().strip()

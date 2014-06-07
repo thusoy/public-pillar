@@ -1,6 +1,0 @@
-{
-    "all": {
-        "DB_PW": "supersecretdbpassword",
-        "SECRET_KEY": "signstuffwiththiskey"
-    }
-}

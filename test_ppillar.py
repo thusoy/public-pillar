@@ -21,48 +21,23 @@ class SecurePillarTest(unittest.TestCase):
 
 
     def test_ppillar(self):
-        input_dicts = [
+        input_values = [
             # Plain key-value dict
-            {
-                'db': 'secretstuff',
-            },
-            # Deeply nested dict
-            {
-                'servers': {
-                    'web': {
-                        'apache': {
-                            'debian': 'secretdebianpw',
-                            'rhel': 'secretrhelpw',
-                        }
-                    }
-                }
-            },
-            # Several values
-            {
-                'key1': 'val1',
-                'key2': 'val2',
-                'key3': 'val3',
-            },
-            # Long values over several lines
-            {
-                'long_key'*100: ('secret'*100 + '\n')*20,
-            },
-            # Random data
-            {
-                'random': str([os.urandom(10) for i in range(10)]),
-            },
-            # Almost looks like a encrypted long test
-            {
-                'ciphertext': 'not very long after all',
-            },
-            # Almost breakage again
-            {
-                'key': 'breakage'
-            }
+            'secretstuff',
+            # Long value over several lines
+            ('secret'*100 + '\n')*20,
+            # Random  binary data
+            str([os.urandom(10) for i in range(10)]),
         ]
-        for input_dict in input_dicts:
-            encrypted = self.enc_ppillar.encrypt_dict(input_dict)
-            self.assertEqual(self.dec_ppillar.decrypt_dict(encrypted), input_dict)
+        for input_value in input_values:
+            encrypted = self.enc_ppillar.encrypt(input_value)
+            plaintext = {
+                'secret_data': input_value,
+            }
+            ciphertext = {
+                'secret_data': encrypted,
+            }
+            self.assertEqual(self.dec_ppillar.decrypt_dict(ciphertext), plaintext)
 
 
 class ShortKeyTest(unittest.TestCase):
@@ -83,12 +58,18 @@ class EncryptedPrivateKeyTest(unittest.TestCase):
 
 
     def test_encrypted_private_key(self):
-        with open(os.path.join('test-data', 'plaintext.json')) as fh:
-            plaintext = yaml.load(fh)
+        expected_plaintext = {
+            'database': {
+                'password': 'supersecretdbpassword',
+            },
+            'webserver': {
+                'secret_key': 'signstuffwiththiskey',
+            }
+        }
         with open(os.path.join('test-data', 'ciphertext.yml')) as fh:
             enc_data = yaml.load(fh)
         decrypted_plaintext = self.ppillar.decrypt_dict(enc_data)
-        self.assertEqual(plaintext, decrypted_plaintext)
+        self.assertEqual(decrypted_plaintext, expected_plaintext)
 
 
 class WrongKeyTest(unittest.TestCase):

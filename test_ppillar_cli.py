@@ -3,9 +3,11 @@ import ppillar
 from contextlib import contextmanager
 from mock import MagicMock, patch
 import os
+import sys
 import random
 import shutil
 import string
+import StringIO
 import tempfile
 import unittest
 import yaml
@@ -19,26 +21,6 @@ def ignored(*exceptions):
         pass
 
 
-class CLITest(unittest.TestCase):
-
-    def tearDown(self):
-        with ignored(OSError):
-            os.remove('test-data.yml')
-
-
-    def test_json_parse(self):
-        input_file = os.path.join('test-data', 'plaintext.json')
-        key = os.path.join('test-data', 'key2048.pem')
-        cli_args = ['-e', input_file, '-k', key, '-o', 'test-data.yml']
-        ret = ppillar.main(cli_args)
-        self.assertEqual(ret, 0)
-        with open('test-data.yml') as fh:
-            results = yaml.load(fh)
-        self.assertEqual(len(results['all']), 2)
-        self.assertTrue('DB_PW' in results['all'])
-        self.assertTrue('SECRET_KEY' in results['all'])
-
-
 class RegressionTest(unittest.TestCase):
 
     def tearDown(self):
@@ -50,11 +32,11 @@ class RegressionTest(unittest.TestCase):
         # test that we can decrypt a file encrypted with the public key in test-data
         key = os.path.join('test-data', 'key2048.pem')
         input_file = os.path.join('test-data', 'ciphertext.yml')
-        cli_args = ['-k', key, '-d', input_file]
+        cli_args = ['-k', key, 'decrypt', input_file]
         ret = ppillar.main(cli_args)
         self.assertEqual(ret, 0)
-        with open(os.path.join('all.sls')) as fh:
-            results = yaml.load(fh)
+        output = sys.stdout.getvalue().strip()
+        results = yaml.load(output)
         self.assertEqual(len(results), 2)
 
 
@@ -70,7 +52,7 @@ class EncryptedKeyTest(unittest.TestCase):
         ciphertext = os.path.join('test-data', 'ciphertext.yml')
         getpass_mock = MagicMock(**{'getpass.return_value': 'test'})
         with patch('ppillar.getpass', getpass_mock):
-            ret = ppillar.main(['-k', key, '-d', ciphertext])
+            ret = ppillar.main(['-k', key, 'decrypt', ciphertext])
         self.assertEqual(ret, 0)
 
 
@@ -81,7 +63,7 @@ class WrongPassEncryptedKeyTest(unittest.TestCase):
         ciphertext = os.path.join('test-data', 'ciphertext.yml')
         getpass_mock = MagicMock(**{'getpass.return_value': 'foo'})
         with patch('ppillar.getpass', getpass_mock):
-            ret = ppillar.main(['-k', key, '-d', ciphertext])
+            ret = ppillar.main(['-k', key, 'decrypt', ciphertext])
         self.assertEqual(ret, 1)
 
 
@@ -89,7 +71,8 @@ class NonexistentOutputDirectoryTest(unittest.TestCase):
 
     def setUp(self):
         tempdir = tempfile.gettempdir()
-        self.target_dir = os.path.join(tempdir, str([random.choice(string.ascii_letters) for i in range(10)]))
+        self.target_dir = os.path.join(tempdir,
+            str([random.choice(string.ascii_letters) for i in range(10)]))
 
 
     def tearDown(self):
@@ -97,7 +80,52 @@ class NonexistentOutputDirectoryTest(unittest.TestCase):
 
 
     def test_nonexisting_target_dir(self):
-        source_data = os.path.join('test-data', 'ciphertext.yml')
-        ppillar.main(['-k', os.path.join('test-data', 'key2048.pem'), '-d', source_data, '-o',
-            self.target_dir])
-        self.assertTrue('all.sls' in os.listdir(self.target_dir))
+        source_data = os.path.join('test-data', 'encrypted_dir')
+        key = os.path.join('test-data', 'key2048.pem')
+        ppillar.main(['-k', key, 'decrypt', source_data, '-o', self.target_dir])
+        self.assertTrue('database.yml' in os.listdir(self.target_dir))
+
+
+class EncryptionTest(unittest.TestCase):
+
+    def setUp(self):
+        self.dec_ppillar = ppillar.PublicPillar(os.path.join('test-data', 'key2048.pem'))
+        self.key = os.path.join('test-data', 'key2048.pub')
+
+
+    def test_simple_encryption(self):
+        secret = 'supersecret'
+        self._do_check(secret)
+
+
+    def test_longer_encryption(self):
+        secret = str([os.urandom(10) for i in range(10)])
+        self._do_check(secret)
+
+
+    def _do_check(self, secret):
+        ret = ppillar.main(['-k', self.key, 'encrypt', secret])
+        self.assertEqual(ret, 0)
+        output = sys.stdout.getvalue().strip()
+        if output[0] == '{':
+            # was encrypted with symmetric key, parse the yaml output
+            output = yaml.load(output)
+        self.assertEqual(self.dec_ppillar.decrypt(output), secret)
+
+
+    def test_file_encryption(self):
+        secret = '@' + os.path.join('test-data', 'key2048.pem')
+        ret = ppillar.main(['-k', self.key, 'encrypt', secret])
+        self.assertEqual(ret, 0)
+        output = yaml.load(sys.stdout.getvalue().strip())
+        rsa_preamble = '-----BEGIN RSA PRIVATE KEY-----'
+        self.assertTrue(self.dec_ppillar.decrypt(output).startswith(rsa_preamble))
+
+
+    def test_encrypt_stdin(self):
+        secret = 'supersecret'
+        with patch('ppillar.sys.stdin', StringIO.StringIO(secret)):
+            ret = ppillar.main(['-k', self.key, 'encrypt'])
+        self.assertEqual(ret, 0)
+        output = sys.stdout.getvalue().strip()
+        self.assertEqual(self.dec_ppillar.decrypt(output), 'supersecret')

@@ -76,17 +76,6 @@ class PublicPillar(object):
         }
 
 
-    def encrypt_dict(self, d):
-        """ Encrypt values in a dict. Return a new dict with the values encrypted. """
-        enc_dict = {}
-        for key, val in d.items():
-            if isinstance(val, dict):
-                enc_dict[key] = self.encrypt_dict(val)
-            else:
-                enc_dict[key] = self.encrypt(val)
-        return enc_dict
-
-
     def decrypt(self, b64_ciphertext):
         """ Decrypts base64-encoded data with the key. """
         if isinstance(b64_ciphertext, dict):
@@ -122,6 +111,32 @@ class PublicPillar(object):
         return d
 
 
+    def decrypt_single_file(self, filename):
+        """ Decrypt a single file with ciphertexts. """
+        with open(filename) as source_fh:
+            source = yaml.load(source_fh)
+        plaintexts = self.decrypt_dict(source)
+        return yaml.safe_dump(plaintexts, default_flow_style=False)
+
+
+    def decrypt_directory(self, source_dir, output_dir):
+        """ Decrypt a directory of ciphertexts and write to output_dir. """
+        source_dir = source_dir.rstrip('/\\')
+        for dirname, directories, filenames in os.walk(source_dir):
+            for filename in filenames:
+                with open(path.join(dirname, filename)) as fh:
+                    ciphertexts = yaml.load(fh)
+                plaintexts = self.decrypt_dict(ciphertexts)
+                prefix = path.commonprefix([source_dir, dirname])
+                output_file = path.join(output_dir, path.join(dirname, filename)[len(prefix)+1:])
+                target_dir = path.dirname(output_file)
+                if not path.exists(target_dir):
+                    os.makedirs(target_dir)
+                print('Writing file: %s' % output_file)
+                with open(output_file, 'w') as output_fh:
+                    yaml.safe_dump(plaintexts, output_fh, default_flow_style=False)
+
+
 def cli(): # pragma: no cover
     """ Entry point for the CLI. """
     return main(sys.argv[1:])
@@ -129,14 +144,10 @@ def cli(): # pragma: no cover
 
 def main(cli_args):
     args = get_args(cli_args)
-    if not args.encrypt:
-        rv = decrypt_pillar(args)
-    else:
-        rv = encrypt_pillar(args)
-    return rv
+    return args.target(args)
 
 
-def decrypt_pillar(args):
+def decrypt(args):
     try:
         public_pillar = PublicPillar(args.key, passphrase=args.passphrase)
     except ValueError:
@@ -148,63 +159,69 @@ def decrypt_pillar(args):
             # Probably wrong passphrase
             print("Couldn't load key, probably wrong passphrase.")
             return 1
-    with open(args.decrypt) as sources_fh:
-        sources = yaml.load(sources_fh)
-    for role, plaintext in sources.items():
-        print('Decrypting keys for %s...' % role)
-        plaintexts = public_pillar.decrypt_dict(plaintext)
+    if path.isfile(args.source):
+        # Single file input
+        print(public_pillar.decrypt_single_file(args.source))
+    else:
+        # Assume directory, traverse recursively
         output_dir = args.output or '.'
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        with open(path.join(output_dir, '%s.sls' % role), 'w') as target_fh:
-            yaml.safe_dump(plaintexts, target_fh, default_flow_style=False)
+        public_pillar.decrypt_directory(args.source, output_dir)
     return 0
 
 
-def encrypt_pillar(args):
+def encrypt(args):
     public_pillar = PublicPillar(args.key)
-    if args.encrypt:
-        with open(args.encrypt) as src_fh:
-            src_dict = yaml.load(src_fh)
+    if args.source:
+        if args.source[0] == '@':
+            # load value from file
+            with open(args.source[1:]) as fh:
+                value = fh.read()
+        else:
+            value = args.source
     else:
-        src_dict = yaml.load(sys.stdin)
-    src = public_pillar.encrypt_dict(src_dict)
-    if args.output:
-        with open(args.output, 'w') as out_fh:
-            yaml.dump(src, out_fh, default_flow_style=False)
-    else:
-        print(yaml.dump(src, default_flow_style=False))
+        value = sys.stdin.read()
+    ciphertext = public_pillar.encrypt(value)
+    print(ciphertext)
     return 0
 
 
 def get_args(cli_args):
-    parser = argparse.ArgumentParser(prog='decrypt-pillar')
-    parser.add_argument('-e', '--encrypt',
-        metavar='<string-to-encrypt>',
-        help='Encrypt a new value to pillar',
-    )
-    parser.add_argument('-k', '--key',
+    # base_parser holds arguments that can be passed at any location
+    base_parser = argparse.ArgumentParser(add_help=False)
+    base_parser.add_argument('-k', '--key',
         metavar='<key-location>',
-        help='Location of key to use for the operation.',
+        help='Location of key to use for the operation. Pubkey for encryption, private key ' +
+            'for decryption',
     )
-    parser.add_argument('-d', '--decrypt',
-        metavar='<input-file>',
-        help='File to read data to decrypt from. Default: stdin. Must be ' +
-            'either JSON or YAML.'
+    base_parser.add_argument('-p', '--passphrase',
+        metavar='<passphrase>',
+        help='The passphrase to use for decrypting an encrypted private key',
     )
-    parser.add_argument('-o', '--output',
+    parser = argparse.ArgumentParser(prog='ppillar', parents=[base_parser])
+    subparsers = parser.add_subparsers(dest='action',
+        title='Action',
+        help='What to do')
+    decrypt_parser = subparsers.add_parser('decrypt',
+        help='Decrypt values',
+        parents=[base_parser])
+    decrypt_parser.set_defaults(target=decrypt)
+    decrypt_parser.add_argument('-o', '--output',
         metavar='<output>',
         help="Where to place the generated files. If decrypting the default is the current " +
             "directory, if encrypting the default is to print to stdout.",
     )
-    parser.add_argument('-p', '--passphrase',
-        metavar='<passphrase>',
-        help='The passphrase to use for decrypting an encrypted private key',
-    )
+    decrypt_parser.add_argument('source', help='The path to decrypt')
+    encrypt_parser = subparsers.add_parser('encrypt',
+        help='Encrypt new value',
+        parents=[base_parser])
+    encrypt_parser.set_defaults(target=encrypt)
+    encrypt_parser.add_argument('source', nargs='?',
+        help='New value to encrypt. If you prefix the value with @, contents will ' +
+            'read from the filename following the @. (eg. @id_rsa). Default: stdin')
     args = parser.parse_args(cli_args)
     if not args.key:
-        print('A key is necessary to do anything! Point the --key parameter ' +
-            'to a key to want to use.\n')
+        print('A key is necessary to do anything! Point the -k/--key parameter ' +
+            'to a key to want to use. (pubkey for encrypting, privkey for decrypting)\n')
         parser.print_help()
         sys.exit(1)
     return args

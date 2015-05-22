@@ -93,7 +93,7 @@ class WrongKeyTest(unittest.TestCase):
 class FilePermissionsTest(unittest.TestCase):
 
     def setUp(self):
-        self.ppillar = PublicPillar(os.path.join('test-data', 'key2048enc.pem'), passphrase='test')
+        self.ppillar = PublicPillar(os.path.join('test-data', 'key2048.pem'))
         self.target_dir = tempfile.mkdtemp()
 
 

@@ -242,24 +242,14 @@ def encrypt(args):
 
 
 def get_args(cli_args):
-    # base_parser holds arguments that can be passed at any location
-    base_parser = argparse.ArgumentParser(add_help=False)
-    base_parser.add_argument('-k', '--key',
-        metavar='<key-location>',
-        help='Location of key to use for the operation. Pubkey for encryption, private key ' +
-            'for decryption',
-    )
-    base_parser.add_argument('-p', '--passphrase',
-        metavar='<passphrase>',
-        help='The passphrase to use for decrypting an encrypted private key',
-    )
-    parser = argparse.ArgumentParser(prog='ppillar', parents=[base_parser])
+    parser = argparse.ArgumentParser(prog='ppillar')
+    _add_common_args(parser, with_defaults=True)
     subparsers = parser.add_subparsers(dest='action',
         title='Action',
         help='What to do')
     decrypt_parser = subparsers.add_parser('decrypt',
-        help='Decrypt values',
-        parents=[base_parser])
+        help='Decrypt values')
+    _add_common_args(decrypt_parser)
     decrypt_parser.set_defaults(target=decrypt)
     decrypt_parser.add_argument('-o', '--output',
         metavar='<output>',
@@ -268,8 +258,8 @@ def get_args(cli_args):
     )
     decrypt_parser.add_argument('source', help='The path to decrypt')
     encrypt_parser = subparsers.add_parser('encrypt',
-        help='Encrypt new value',
-        parents=[base_parser])
+        help='Encrypt new value')
+    _add_common_args(encrypt_parser)
     encrypt_parser.set_defaults(target=encrypt)
     encrypt_parser.add_argument('source', nargs='?',
         help='New value to encrypt. If you prefix the value with @, contents will ' +
@@ -281,6 +271,22 @@ def get_args(cli_args):
         parser.print_help()
         sys.exit(1)
     return args
+
+
+def _add_common_args(parser, with_defaults=False):
+    suppress = None if with_defaults else argparse.SUPPRESS
+    parser.add_argument('-k', '--key',
+        metavar='<key-location>',
+        default=(suppress or None),
+        help='Location of key to use for the operation. Pubkey for encryption, private key ' +
+            'for decryption',
+    )
+    parser.add_argument('-p', '--passphrase',
+        metavar='<passphrase>',
+        default=(suppress or None),
+        help='The passphrase to use for decrypting an encrypted private key. Will be prompted'
+        ' for if necessary and not given',
+    )
 
 
 if __name__ == '__main__': # pragma: no cover

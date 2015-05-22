@@ -77,7 +77,7 @@ class NonexistentOutputDirectoryTest(unittest.TestCase):
     def setUp(self):
         tempdir = tempfile.gettempdir()
         self.target_dir = os.path.join(tempdir,
-            str([random.choice(string.ascii_letters) for i in range(10)]))
+            ''.join([random.choice(string.ascii_letters) for i in range(10)]))
 
 
     def tearDown(self):

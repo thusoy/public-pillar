@@ -21,7 +21,7 @@ def strtype(data):
     """ Enforce a str type that will be printed without b/u prefixes on both py2 and py3. """
     PY3 = sys.version_info[0] == 3
     if PY3:
-        return data.decode('utf-8')
+        return data.decode('utf-8') # pragma: no cover
     return data
 
 

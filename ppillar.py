@@ -6,11 +6,14 @@ from Crypto.Hash import SHA512
 from Crypto.PublicKey import RSA
 from Crypto.Util import number
 from os import path
+from contextlib import contextmanager
 import argparse
 import base64
+import errno
 import getpass
 import os
 import sys
+import tempfile
 import yaml
 
 
@@ -141,8 +144,52 @@ class PublicPillar(object):
                 if not path.exists(target_dir):
                     os.makedirs(target_dir)
                 print('Writing file: %s' % output_file)
-                with open(output_file, 'w') as output_fh:
-                    yaml.safe_dump(plaintexts, output_fh, default_flow_style=False)
+                with secure_open_file(output_file) as fh:
+                    yaml.safe_dump(plaintexts, fh, default_flow_style=False)
+
+
+@contextmanager
+def secure_open_file(filename):
+    """ Securely open or create a new file with 0600 permissions.
+
+    Strategy: Create the file directly with O_EXCL if possible, which ensures that the file did
+    not already exist and that no one thus already has an open file descriptor which can read from
+    it. If this fails, fall back to creating a temporary file in the same directory, and move it to
+    the target location using os.rename. This is not distruptive towards other genuine applications
+    reading the files being written. On Windows we fall back to deleting the target and re-creating
+    it.
+
+    Note: We do not try to ensure permissions on windows due to entirely different security models.
+    If this is necessary for you, please submit a pull request. Some inspiration might be found
+    here: http://timgolden.me.uk/python/win32_how_do_i/add-security-to-a-file.html.
+    """
+    mode = 0o600
+    old_umask = os.umask(0)
+    try:
+        fd = os.open(filename, os.O_CREAT | os.O_WRONLY | os.O_EXCL, mode)
+        handle = os.fdopen(fd, 'w')
+    except OSError as exc:
+        if exc.errno == errno.EEXIST:
+            if os.name == 'nt':
+                # Windows doesn't support renaming to existing file, try to delete the target
+                # and try again
+                os.remove(filename)
+                fd = os.open(filename, os.O_CREAT | os.O_WRONLY | os.O_EXCL, mode)
+                handle = os.fdopen(fd, 'w')
+            else:
+                # The file already exists, create a tempfile and replace the file with new one
+                pardir = os.path.dirname(filename)
+                handle = tempfile.NamedTemporaryFile(dir=pardir, delete=False)
+                os.rename(handle.name, filename)
+        else:
+            raise
+    finally:
+        os.umask(old_umask)
+
+    try:
+        yield handle
+    finally:
+        handle.close()
 
 
 def cli(): # pragma: no cover

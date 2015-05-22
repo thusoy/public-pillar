@@ -145,7 +145,7 @@ class PublicPillar(object):
                     os.makedirs(target_dir)
                 print('Writing file: %s' % output_file)
                 with secure_open_file(output_file) as fh:
-                    yaml.safe_dump(plaintexts, fh, default_flow_style=False)
+                    yaml.safe_dump(plaintexts, fh, default_flow_style=False, encoding='utf-8')
 
 
 @contextmanager

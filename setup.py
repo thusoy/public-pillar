@@ -12,8 +12,14 @@ install_requires = [
     'pyyaml',
 ]
 
+extras_require = {
+    'test': ['coverage', 'mock', 'nose'],
+}
+
 if sys.version_info < (2, 7, 0):
     install_requires.append('argparse')
+    extras_require['test'].append('unittest2')
+
 
 setup(
     name='ppillar',
@@ -24,9 +30,7 @@ setup(
     description="A PKI encrypted datastructure to keep secrets in the public",
     py_modules=['ppillar'],
     install_requires=install_requires,
-    extras_require={
-        'test': ['coverage', 'mock', 'nose'],
-    },
+    extras_require=extras_require,
     entry_points={
         'console_scripts': [
             'ppillar = ppillar:cli',

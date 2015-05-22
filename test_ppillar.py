@@ -8,6 +8,12 @@ import tempfile
 import unittest
 import yaml
 
+try:
+    from unittest import skipIf
+except ImportError:
+    # Python 2.6
+    from unittest2 import skipIf
+
 @contextmanager
 def ignored(*exceptions):
     try:
@@ -82,7 +88,7 @@ class WrongKeyTest(unittest.TestCase):
             passphrase='foo')
 
 
-@unittest.skipIf(os.name == 'nt', 'File permission tests are not run on windows due to '
+@skipIf(os.name == 'nt', 'File permission tests are not run on windows due to '
     'an unsupported security model')
 class FilePermissionsTest(unittest.TestCase):
 
@@ -101,7 +107,7 @@ class FilePermissionsTest(unittest.TestCase):
             for filename in filenames:
                 st_mode = os.stat(os.path.join(self.target_dir, dirpath, filename)).st_mode
                 mode = stat.S_IMODE(st_mode)
-                self.assertEqual(oct(mode), '0600')
+                self.assertEqual(mode, 0o600)
                 at_least_one_result = True
         self.assertTrue(at_least_one_result)
 
@@ -127,7 +133,7 @@ class FilePermissionsTest(unittest.TestCase):
         source_dir = os.path.join('test-data', 'encrypted_dir')
         word_readable_file = os.path.join(self.target_dir, 'database.yml')
         with open(word_readable_file, 'wb') as fh:
-            fh.write('prepillarcontents')
+            fh.write(b'prepillarcontents')
         os.chmod(word_readable_file, 0o644)
         word_readable_file_fd = open(word_readable_file, 'rb', 0)
 
@@ -137,4 +143,4 @@ class FilePermissionsTest(unittest.TestCase):
         # When the file already existed, it should have created a new file descriptor
         # in the target location, which means that the contents we can read from the old
         # one is not the sensitive data in the new file
-        self.assertEqual(word_readable_file_fd.read(), 'prepillarcontents')
+        self.assertEqual(word_readable_file_fd.read(), b'prepillarcontents')

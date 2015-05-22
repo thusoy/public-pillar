@@ -126,10 +126,10 @@ class FilePermissionsTest(unittest.TestCase):
     def test_does_not_allow_existing_file_descriptors_to_read_contents(self):
         source_dir = os.path.join('test-data', 'encrypted_dir')
         word_readable_file = os.path.join(self.target_dir, 'database.yml')
-        with open(word_readable_file, 'w') as fh:
+        with open(word_readable_file, 'wb') as fh:
             fh.write('prepillarcontents')
         os.chmod(word_readable_file, 0o644)
-        word_readable_file_fd = open(word_readable_file, 'r', 0)
+        word_readable_file_fd = open(word_readable_file, 'rb', 0)
 
         self.ppillar.decrypt_directory(source_dir, self.target_dir)
         self._assert_all_files_in_dir_are_0600(self.target_dir)
